@@ -5,12 +5,50 @@ This module provides a lightweight client for interacting with FreeIPA
 servers via JSON-RPC. It requires Kerberos authentication (existing tickets
 via kinit) and returns pure Python dictionaries suitable for MCP integration.
 
-Example:
+Basic Usage::
+
     >>> from ipaclient import IPAClient
     >>> client = IPAClient("ipa.example.com")
     >>> result = client.ping()
     >>> print(result["summary"])
     IPA server version 4.9.8. API version 2.251
+
+Command Execution::
+
+    >>> user = client.command("user_show", "admin")
+    >>> print(user["uid"])
+    ['admin']
+
+    >>> results = client.command("user_find", uid="admin", sizelimit=10)
+    >>> print(results["count"])
+    1
+
+Help System::
+
+    >>> topics = client.help()
+    >>> print(topics["topics"][0]["name"])
+    automember
+
+    >>> cmd = client.help("user_show")
+    >>> print(cmd["args"][0]["name"])
+    uid
+
+Schema Export::
+
+    >>> schema = client.export_schema()
+    >>> print(list(schema["topics"].keys())[:3])
+    ['automember', 'automount', 'caacl']
+    >>> print(schema["commands"]["user_show"]["summary"])
+    Display information about a user.
+
+Error Handling::
+
+    >>> from ipaclient import IPAConnectionError, IPAServerError
+    >>> try:
+    ...     client.command("user_show", "nonexistent")
+    ... except IPAServerError as e:
+    ...     print(e.to_dict())
+    {'error': {'code': 'NotFound', 'message': '...', 'data': {...}}}
 
 Dependencies:
     - requests: HTTP client
