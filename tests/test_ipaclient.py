@@ -647,3 +647,29 @@ def test_help_command_no_required_args(mock_auth, mock_server, mock_schema):
     options = {o["name"]: o for o in result["options"]}
     assert options["criteria"]["type"] == "str"
     assert options["sizelimit"]["type"] == "int"
+
+
+# ============================================================================
+# Type Mapping Tests
+# ============================================================================
+
+
+def test_map_type_basic_types(mock_server):
+    """Test type mapping for basic IPA types."""
+    client = IPAClient(mock_server)
+
+    assert client._map_type("Str") == "str"
+    assert client._map_type("Int") == "int"
+    assert client._map_type("Bool") == "bool"
+    assert client._map_type("Flag") == "bool"
+    assert client._map_type("List") == "list"
+    assert client._map_type("Dict") == "dict"
+
+
+def test_map_type_unknown(mock_server):
+    """Test type mapping for unknown types falls back to str."""
+    client = IPAClient(mock_server)
+
+    assert client._map_type("SomeCustomType") == "str"
+    assert client._map_type("") == "str"
+    assert client._map_type(None) == "str"
