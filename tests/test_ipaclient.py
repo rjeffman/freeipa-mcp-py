@@ -525,3 +525,56 @@ def test_help_commands(mock_auth, mock_server, mock_schema):
 
     assert "group_show" in commands
     assert commands["group_show"]["summary"] == "Display information about a group"
+
+
+# ============================================================================
+# Help - Topic Details Tests
+# ============================================================================
+
+
+@responses.activate
+@patch("ipaclient.HTTPSPNEGOAuth")
+def test_help_topic_details(mock_auth, mock_server, mock_schema):
+    """Test help('<topic>') returns topic info with command list."""
+    responses.add(
+        responses.POST,
+        f"https://{mock_server}/ipa/json",
+        json={"result": mock_schema, "error": None},
+        status=200,
+    )
+
+    client = IPAClient(mock_server)
+    result = client.help("user")
+
+    assert result["name"] == "user"
+    assert result["doc"] == "Users\n\nManage user accounts."
+
+    # Should contain user commands, sorted by name
+    assert "commands" in result
+    cmd_names = [c["name"] for c in result["commands"]]
+    assert cmd_names == ["user_find", "user_show"]
+
+    # Each command should have name and summary
+    cmds = {c["name"]: c for c in result["commands"]}
+    assert cmds["user_show"]["summary"] == "Display information about a user"
+    assert cmds["user_find"]["summary"] == "Search for users"
+
+
+@responses.activate
+@patch("ipaclient.HTTPSPNEGOAuth")
+def test_help_unknown_topic(mock_auth, mock_server, mock_schema):
+    """Test help() with unknown topic raises IPAValidationError."""
+    responses.add(
+        responses.POST,
+        f"https://{mock_server}/ipa/json",
+        json={"result": mock_schema, "error": None},
+        status=200,
+    )
+
+    client = IPAClient(mock_server)
+
+    with pytest.raises(IPAValidationError) as exc_info:
+        client.help("nonexistent")
+
+    assert exc_info.value.code == "NotFound"
+    assert "nonexistent" in str(exc_info.value)

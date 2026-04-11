@@ -457,3 +457,33 @@ class IPAClient:
         commands.sort(key=lambda c: c["name"])
 
         return {"commands": commands}
+
+    def _help_topic(self, schema: Dict[str, Any], topic: str) -> Dict[str, Any]:
+        """Generate topic details with associated commands.
+
+        Args:
+            schema: Full IPA schema
+            topic: Topic name (e.g., 'user', 'group')
+
+        Returns:
+            Dictionary with topic info and list of commands in the topic
+        """
+        topic_data = schema["topics"][topic]
+
+        # Find commands belonging to this topic
+        commands = []
+        for cmd_name, cmd_data in schema.get("commands", {}).items():
+            if cmd_data.get("topic") == topic:
+                commands.append({
+                    "name": cmd_name,
+                    "summary": cmd_data.get("summary", ""),
+                })
+
+        # Sort commands alphabetically
+        commands.sort(key=lambda c: c["name"])
+
+        return {
+            "name": topic,
+            "doc": topic_data.get("doc", ""),
+            "commands": commands,
+        }
