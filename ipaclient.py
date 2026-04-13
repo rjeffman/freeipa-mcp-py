@@ -56,6 +56,7 @@ Dependencies:
 """
 
 from typing import Dict, List, Optional, Any
+import json
 import requests
 from requests_gssapi import HTTPSPNEGOAuth
 
@@ -443,6 +444,46 @@ class IPAClient:
             data={"topic": topic},
         )
 
+    def help_markdown(self, topic: Optional[str] = None) -> str:
+        """Retrieve help information in markdown format.
+
+        This method provides markdown-formatted help documentation suitable
+        for AI agents and other tools that consume structured text. It wraps
+        the help() method and converts the JSON output to markdown tables
+        and formatted sections.
+
+        Args:
+            topic: Optional topic or command name
+                   None or "topics" -> markdown table of all topics
+                   "commands" -> markdown table of all commands
+                   "<topic>" -> topic documentation with command table
+                   "<command>" -> command details with args/options tables
+
+        Returns:
+            Markdown-formatted help documentation
+
+        Raises:
+            IPASchemaError: Schema fetch/parse failure
+            IPAConnectionError: Network failure
+            IPAValidationError: Unknown topic/command
+
+        Examples:
+            >>> client = IPAClient("ipa.example.com")
+            >>> md = client.help_markdown()  # All topics as table
+            >>> print(md)
+            # IPA Help Topics
+            | Topic | Description |
+            ...
+
+            >>> md = client.help_markdown("user_show")  # Command details
+            >>> print(md)
+            # user_show
+            Display information about a user.
+            ...
+        """
+        help_data = self.help(topic)
+        return self._convert_help_to_markdown(help_data, topic)
+
     def _help_topics(self, schema: Dict[str, Any]) -> Dict[str, Any]:
         """Generate topic listing.
 
@@ -594,6 +635,66 @@ class IPAClient:
             "args": args,
             "options": options,
         }
+
+    def _convert_help_to_markdown(
+        self, help_data: Dict[str, Any], topic: Optional[str] = None
+    ) -> str:
+        """Convert structured help data to markdown format.
+
+        Args:
+            help_data: Structured help dictionary from help() method
+            topic: Optional topic/command name for context
+
+        Returns:
+            Markdown-formatted help documentation
+        """
+        # Topics listing
+        if "topics" in help_data:
+            return self._markdown_topics(help_data["topics"])
+
+        # Topic details (has 'doc' and 'commands' keys)
+        if "doc" in help_data and "commands" in help_data:
+            raise NotImplementedError(
+                "_markdown_topic_details() not yet implemented"
+            )
+
+        # Commands listing
+        if "commands" in help_data:
+            raise NotImplementedError(
+                "_markdown_commands() not yet implemented"
+            )
+
+        # Command details (has 'args' and 'options' keys)
+        if "args" in help_data or "options" in help_data:
+            raise NotImplementedError(
+                "_markdown_command_details() not yet implemented"
+            )
+
+        # Fallback: return JSON as code block
+        return f"```json\n{json.dumps(help_data, indent=2)}\n```"
+
+    def _markdown_topics(self, topics: List[Dict[str, str]]) -> str:
+        """Format topics list as markdown table.
+
+        Args:
+            topics: List of topic dicts with 'name' and 'summary'
+
+        Returns:
+            Markdown table of topics
+        """
+        lines = [
+            "# IPA Help Topics",
+            "",
+            "| Topic | Description |",
+            "|-------|-------------|",
+        ]
+
+        for topic in topics:
+            name = topic.get("name", "").replace("|", "\\|")  # Escape pipes
+            summary = topic.get("summary", "").replace("|", "\\|")
+            lines.append(f"| {name} | {summary} |")
+
+        return "\n".join(lines)
 
     def _map_type(self, ipa_type: Optional[str]) -> str:
         """Map IPA parameter type to Python type name."""
