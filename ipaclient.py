@@ -552,10 +552,17 @@ class IPAClient:
         # Find commands belonging to this topic
         commands = []
         for cmd_name, cmd_data in schema.get("commands", {}).items():
-            if cmd_data.get("topic") == topic:
+            cmd_topic = cmd_data.get("topic", "")
+            if not cmd_topic and "topic_topic" in cmd_data:
+                cmd_topic = cmd_data["topic_topic"].split("/")[0]
+            if cmd_topic == topic:
+                summary = cmd_data.get("summary", "")
+                if not summary:
+                    doc = cmd_data.get("doc", "")
+                    summary = doc.split("\n")[0] if doc else ""
                 commands.append({
                     "name": cmd_name,
-                    "summary": cmd_data.get("summary", ""),
+                    "summary": summary,
                 })
 
         # Sort commands alphabetically
@@ -654,9 +661,7 @@ class IPAClient:
 
         # Topic details (has 'doc' and 'commands' keys)
         if "doc" in help_data and "commands" in help_data:
-            raise NotImplementedError(
-                "_markdown_topic_details() not yet implemented"
-            )
+            return self._markdown_topic_details(help_data)
 
         # Commands listing
         if "commands" in help_data:
@@ -714,6 +719,43 @@ class IPAClient:
             name = cmd.get("name", "").replace("|", "\\|")  # Escape pipes
             summary = cmd.get("summary", "").replace("|", "\\|")
             lines.append(f"| {name} | {summary} |")
+
+        return "\n".join(lines)
+
+    def _markdown_topic_details(self, topic_data: Dict[str, Any]) -> str:
+        """Format topic details with commands as markdown.
+
+        Args:
+            topic_data: Topic dict with 'name', 'doc', and 'commands'
+
+        Returns:
+            Markdown-formatted topic page with commands table
+        """
+        name = topic_data.get("name", "Unknown")
+        doc = topic_data.get("doc", "")
+        commands = topic_data.get("commands", [])
+
+        lines = [
+            f"# {name}",
+            "",
+        ]
+
+        # Add documentation if present
+        if doc:
+            lines.append(doc.strip())
+            lines.append("")
+
+        # Add commands table
+        if commands:
+            lines.append("## Commands")
+            lines.append("")
+            lines.append("| Command | Description |")
+            lines.append("|---------|-------------|")
+
+            for cmd in commands:
+                cmd_name = cmd.get("name", "").replace("|", "\\|")
+                cmd_summary = cmd.get("summary", "").replace("|", "\\|")
+                lines.append(f"| {cmd_name} | {cmd_summary} |")
 
         return "\n".join(lines)
 
