@@ -25,6 +25,45 @@ usage() {
     exit 1
 }
 
+# Check functions
+check_format() {
+    echo -e "${GREEN}Checking code formatting...${NC}"
+    ruff format --check --diff .
+    echo -e "${GREEN}✓ Formatting check passed${NC}"
+}
+
+check_linter() {
+    echo -e "${GREEN}Running ruff check...${NC}"
+    ruff check .
+    echo -e "${GREEN}✓ Linting complete${NC}"
+    if command -v pylint >/dev/null 2>&1
+    then
+        echo -e "${GREEN}Running pylint...${NC}"
+        pylint .
+        echo -e "${GREEN}✓ Linting with pylint completed${NC}"
+    else
+        echo -e "${YELLOW}SKIP: 'pylint' is not available.${NC}"
+    fi
+}
+
+check_type() {
+    echo -e "${GREEN}Running ty type checker...${NC}"
+    ty check .
+    echo -e "${GREEN}✓ Type checking complete${NC}"
+}
+
+check_shellcheck() {
+    echo -e "${GREEN}Running shellcheck...${NC}"
+    find . -type f -name '*.sh' -exec shellcheck -x -a -o all -e SC2292 -e SC2310 -e SC2311 {} +
+    echo -e "${GREEN}✓ Shellcheck passed${NC}"
+}
+
+check_test() {
+    echo -e "${GREEN}Running tests with coverage...${NC}"
+    PYTHONPATH=${REPODIR} pytest --cov=ipaclient --cov-report=term-missing --cov-report=html
+    echo -e "${GREEN}✓ Tests complete (coverage report: htmlcov/index.html)${NC}"
+}
+
 # Check argument
 if [ $# -ne 1 ]; then
     usage
@@ -32,62 +71,37 @@ fi
 
 case "$1" in
     format)
-        echo -e "${GREEN}Checking code formatting...${NC}"
-        ruff format --check --diff .
-        echo -e "${GREEN}✓ Formatting check passed${NC}"
+        check_format
         ;;
     linter)
-        echo -e "${GREEN}Running ruff check...${NC}"
-        ruff check .
-        echo -e "${GREEN}✓ Linting complete${NC}"
+        check_linter
         ;;
     type)
-        echo -e "${GREEN}Running ty type checker...${NC}"
-        ty check .
-        echo -e "${GREEN}✓ Type checking complete${NC}"
+        check_type
         ;;
     shellcheck)
-        echo -e "${GREEN}Running shellcheck...${NC}"
-        find . -type f -name '*.sh' -exec shellcheck -x -a -o all -e SC2292 -e SC2310 -e SC2311 {} +
-        echo -e "${GREEN}✓ Shellcheck passed${NC}"
+        check_shellcheck
         ;;
     test)
-        echo -e "${GREEN}Running tests with coverage...${NC}"
-        PYTHONPATH=${REPODIR} pytest --cov=ipaclient --cov-report=term-missing --cov-report=html
-        echo -e "${GREEN}✓ Tests complete (coverage report: htmlcov/index.html)${NC}"
+        check_test
         ;;
     all)
         echo -e "${YELLOW}Running all checks...${NC}"
         echo ""
 
-        # Format check
-        echo -e "${GREEN}Checking code formatting...${NC}"
-        ruff format --check .
-        echo -e "${GREEN}✓ Formatting check passed${NC}"
+        check_format
         echo ""
 
-        # Linter
-        echo -e "${GREEN}Running ruff check...${NC}"
-        ruff check .
-        echo -e "${GREEN}✓ Linting complete${NC}"
+        check_linter
         echo ""
 
-        # Type checking
-        echo -e "${GREEN}Running ty type checker...${NC}"
-        ty check .
-        echo -e "${GREEN}✓ Type checking complete${NC}"
+        check_type
         echo ""
 
-        # Shellcheck
-        echo -e "${GREEN}Running shellcheck...${NC}"
-        find . -type f -name '*.sh' -exec shellcheck -x -a -o all -e SC2292 -e SC2310 -e SC2311 {} +
-        echo -e "${GREEN}✓ Shellcheck passed${NC}"
+        check_shellcheck
         echo ""
 
-        # Tests
-        echo -e "${GREEN}Running tests with coverage...${NC}"
-        PYTHONPATH=. pytest --cov=ipaclient --cov-report=term-missing --cov-report=html
-        echo -e "${GREEN}✓ Tests complete (coverage report: htmlcov/index.html)${NC}"
+        check_test
         echo ""
 
         echo -e "${GREEN}✓ All checks passed${NC}"
