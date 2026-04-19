@@ -36,6 +36,9 @@ gui = [
     "PyGObject>=3.42.0",
 ]
 
+[tool.setuptools]
+py-modules = ["ipaclient"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["freeipa_mcp*"]

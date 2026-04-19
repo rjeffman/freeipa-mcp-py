@@ -9,9 +9,9 @@ from unittest.mock import patch
 import pytest
 import responses
 
-from ipaclient import (
+from freeipa_mcp.ipaclient import (
     IPAAuthenticationError,
-    IPAClient,
+    IPAThinClient,
     IPAConnectionError,
     IPAError,
     IPASchemaError,
@@ -84,7 +84,7 @@ def test_ipa_error_subclasses():
 
 def test_client_init_basic(mock_server):
     """Test basic client initialization."""
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     assert client._server == mock_server
     assert client._base_url == f"https://{mock_server}"
     assert client._json_url == f"https://{mock_server}/ipa/json"
@@ -96,22 +96,22 @@ def test_client_init_basic(mock_server):
 
 def test_client_init_no_ssl_verify(mock_server):
     """Test client initialization with SSL verification disabled."""
-    client = IPAClient(mock_server, verify_ssl=False)
+    client = IPAThinClient(mock_server, verify_ssl=False)
     assert client._verify_ssl is False
 
 
 def test_client_init_url_construction():
     """Test URL construction for various server formats."""
     # Just hostname
-    client = IPAClient("ipa.example.com", verify_ssl=False)
+    client = IPAThinClient("ipa.example.com", verify_ssl=False)
     assert client._base_url == "https://ipa.example.com"
 
     # Hostname with domain
-    client = IPAClient("ipa.corp.example.com", verify_ssl=False)
+    client = IPAThinClient("ipa.corp.example.com", verify_ssl=False)
     assert client._base_url == "https://ipa.corp.example.com"
 
     # IP address
-    client = IPAClient("192.168.1.100", verify_ssl=False)
+    client = IPAThinClient("192.168.1.100", verify_ssl=False)
     assert client._base_url == "https://192.168.1.100"
 
 
@@ -121,7 +121,7 @@ def test_client_init_url_construction():
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_make_request_basic(mock_auth, mock_server):
     """Test basic JSON-RPC request."""
     responses.add(
@@ -134,7 +134,7 @@ def test_make_request_basic(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client._make_request("ping")
 
     assert result == {"summary": "OK"}
@@ -150,7 +150,7 @@ def test_make_request_basic(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_make_request_with_args(mock_auth, mock_server):
     """Test JSON-RPC request with positional arguments."""
     responses.add(
@@ -160,7 +160,7 @@ def test_make_request_with_args(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     client._make_request("user_show", args=["admin"])
 
     body = responses.calls[0].request.body
@@ -170,7 +170,7 @@ def test_make_request_with_args(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_make_request_with_options(mock_auth, mock_server):
     """Test JSON-RPC request with options."""
     responses.add(
@@ -180,7 +180,7 @@ def test_make_request_with_options(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     client._make_request("test", options={"all": True, "raw": False})
 
     body = responses.calls[0].request.body
@@ -192,7 +192,7 @@ def test_make_request_with_options(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_make_request_version_override(mock_auth, mock_server):
     """Test that explicit version is not overridden."""
     responses.add(
@@ -202,7 +202,7 @@ def test_make_request_version_override(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     client._make_request("test", options={"version": "2.250"})
 
     body = responses.calls[0].request.body
@@ -212,7 +212,7 @@ def test_make_request_version_override(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_make_request_http_error(mock_auth, mock_server):
     """Test handling of HTTP errors."""
     responses.add(
@@ -222,7 +222,7 @@ def test_make_request_http_error(mock_auth, mock_server):
         status=404,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     with pytest.raises(IPAServerError) as exc_info:
         client._make_request("test")
 
@@ -230,7 +230,7 @@ def test_make_request_http_error(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_make_request_ipa_error(mock_auth, mock_server):
     """Test handling of IPA server errors."""
     responses.add(
@@ -247,7 +247,7 @@ def test_make_request_ipa_error(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     with pytest.raises(IPAServerError) as exc_info:
         client._make_request("user_show", args=["nonexistent"])
 
@@ -255,10 +255,10 @@ def test_make_request_ipa_error(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_make_request_connection_error(mock_auth, mock_server):
     """Test handling of connection errors."""
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
 
     with pytest.raises(IPAConnectionError) as exc_info:
         client._make_request("ping")
@@ -274,7 +274,7 @@ def test_make_request_connection_error(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_ping_success(mock_auth, mock_server, mock_ping_response):
     """Test successful ping."""
     responses.add(
@@ -284,7 +284,7 @@ def test_ping_success(mock_auth, mock_server, mock_ping_response):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.ping()
 
     assert "summary" in result
@@ -293,10 +293,10 @@ def test_ping_success(mock_auth, mock_server, mock_ping_response):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_ping_connection_error(mock_auth, mock_server):
     """Test ping with connection error."""
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
 
     with pytest.raises(IPAConnectionError):
         client.ping()
@@ -308,7 +308,7 @@ def test_ping_connection_error(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_command_no_args(mock_auth, mock_server):
     """Test command execution with no arguments."""
     responses.add(
@@ -318,14 +318,14 @@ def test_command_no_args(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.command("config_show")
 
     assert result == {"data": "test"}
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_command_with_args(mock_auth, mock_server):
     """Test command execution with positional arguments."""
     responses.add(
@@ -338,7 +338,7 @@ def test_command_with_args(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     client.command("user_show", "admin")
 
     body = responses.calls[0].request.body
@@ -349,7 +349,7 @@ def test_command_with_args(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_command_with_kwargs(mock_auth, mock_server):
     """Test command execution with keyword arguments."""
     responses.add(
@@ -363,7 +363,7 @@ def test_command_with_kwargs(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     client.command("user_find", uid="test", sizelimit=10)
 
     body = responses.calls[0].request.body
@@ -375,7 +375,7 @@ def test_command_with_kwargs(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_command_with_args_and_kwargs(mock_auth, mock_server):
     """Test command execution with both args and kwargs."""
     responses.add(
@@ -385,7 +385,7 @@ def test_command_with_args_and_kwargs(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     client.command("group_show", "testgroup", all=True, raw=False)
 
     body = responses.calls[0].request.body
@@ -402,7 +402,7 @@ def test_command_with_args_and_kwargs(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_get_schema_initial_fetch(mock_auth, mock_server, mock_schema):
     """Test initial schema fetch."""
     responses.add(
@@ -412,7 +412,7 @@ def test_get_schema_initial_fetch(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     schema = client._get_schema()
 
     assert schema == mock_schema
@@ -421,7 +421,7 @@ def test_get_schema_initial_fetch(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_get_schema_cached(mock_auth, mock_server, mock_schema):
     """Test schema caching."""
     responses.add(
@@ -431,7 +431,7 @@ def test_get_schema_cached(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
 
     # First call - fetches from server
     schema1 = client._get_schema()
@@ -444,7 +444,7 @@ def test_get_schema_cached(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_get_schema_error(mock_auth, mock_server):
     """Test schema fetch error handling."""
     responses.add(
@@ -457,7 +457,7 @@ def test_get_schema_error(mock_auth, mock_server):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
 
     with pytest.raises(IPASchemaError) as exc_info:
         client._get_schema()
@@ -471,7 +471,7 @@ def test_get_schema_error(mock_auth, mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_help_no_args_lists_topics(mock_auth, mock_server, mock_schema):
     """Test help() with no arguments lists all topics."""
     responses.add(
@@ -481,7 +481,7 @@ def test_help_no_args_lists_topics(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.help()
 
     assert "topics" in result
@@ -498,7 +498,7 @@ def test_help_no_args_lists_topics(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_help_topics_arg(mock_auth, mock_server, mock_schema):
     """Test help('topics') explicitly."""
     responses.add(
@@ -508,7 +508,7 @@ def test_help_topics_arg(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.help("topics")
 
     assert "topics" in result
@@ -521,7 +521,7 @@ def test_help_topics_arg(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_help_commands(mock_auth, mock_server, mock_schema):
     """Test help('commands') lists all commands."""
     responses.add(
@@ -531,7 +531,7 @@ def test_help_commands(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.help("commands")
 
     assert "commands" in result
@@ -556,7 +556,7 @@ def test_help_commands(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_help_topic_details(mock_auth, mock_server, mock_schema):
     """Test help('<topic>') returns topic info with command list."""
     responses.add(
@@ -566,7 +566,7 @@ def test_help_topic_details(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.help("user")
 
     assert result["name"] == "user"
@@ -584,7 +584,7 @@ def test_help_topic_details(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_help_unknown_topic(mock_auth, mock_server, mock_schema):
     """Test help() with unknown topic raises IPAValidationError."""
     responses.add(
@@ -594,7 +594,7 @@ def test_help_unknown_topic(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
 
     with pytest.raises(IPAValidationError) as exc_info:
         client.help("nonexistent")
@@ -609,7 +609,7 @@ def test_help_unknown_topic(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_help_command_details(mock_auth, mock_server, mock_schema):
     """Test help('<command>') returns command details with args and options."""
     responses.add(
@@ -619,7 +619,7 @@ def test_help_command_details(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.help("user_show")
 
     assert result["name"] == "user_show"
@@ -647,7 +647,7 @@ def test_help_command_details(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_help_command_no_required_args(mock_auth, mock_server, mock_schema):
     """Test help('<command>') with no required args has empty args list."""
     responses.add(
@@ -657,7 +657,7 @@ def test_help_command_no_required_args(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.help("user_find")
 
     assert result["name"] == "user_find"
@@ -682,7 +682,7 @@ def test_help_command_no_required_args(mock_auth, mock_server, mock_schema):
 
 def test_map_type_basic_types(mock_server):
     """Test type mapping for basic IPA types."""
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
 
     assert client._map_type("Str") == "str"
     assert client._map_type("Int") == "int"
@@ -694,7 +694,7 @@ def test_map_type_basic_types(mock_server):
 
 def test_map_type_unknown(mock_server):
     """Test type mapping for unknown types falls back to str."""
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
 
     assert client._map_type("SomeCustomType") == "str"
     assert client._map_type("") == "str"
@@ -707,7 +707,7 @@ def test_map_type_unknown(mock_server):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_export_schema_structure(mock_auth, mock_server, mock_schema):
     """Test export_schema returns correct structure."""
     responses.add(
@@ -717,7 +717,7 @@ def test_export_schema_structure(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
     result = client.export_schema()
 
     # Check top-level structure
@@ -750,7 +750,7 @@ def test_export_schema_structure(mock_auth, mock_server, mock_schema):
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_export_schema_caching(mock_auth, mock_server, mock_schema):
     """Test export_schema uses cached schema."""
     responses.add(
@@ -760,7 +760,7 @@ def test_export_schema_caching(mock_auth, mock_server, mock_schema):
         status=200,
     )
 
-    client = IPAClient(mock_server)
+    client = IPAThinClient(mock_server)
 
     # First call
     result1 = client.export_schema()
@@ -803,7 +803,7 @@ RVBBU2VMSU5FMR4wHAYDVQQDDBVDZXJ0aWZpY2F0ZSBBdXRob3JpdHkwHhcNMjQw
     )
 
     # Create client (should download cert)
-    client = IPAClient(mock_server, verify_ssl=True)
+    client = IPAThinClient(mock_server, verify_ssl=True)
 
     # Verify cert was downloaded
     assert len(responses.calls) == 1
@@ -837,7 +837,7 @@ def test_get_ca_cert_uses_cached(mock_server, tmp_path, monkeypatch):
     cert_path.write_text(ca_cert_content)
 
     # Create client (should NOT download cert)
-    client = IPAClient(mock_server, verify_ssl=True)
+    client = IPAThinClient(mock_server, verify_ssl=True)
 
     # Verify no HTTP requests were made
     assert len(responses.calls) == 0
@@ -864,7 +864,7 @@ def test_get_ca_cert_download_failure(mock_server, tmp_path, monkeypatch):
 
     # Should raise IPAConnectionError
     with pytest.raises(IPAConnectionError) as exc_info:
-        IPAClient(mock_server, verify_ssl=True)
+        IPAThinClient(mock_server, verify_ssl=True)
 
     assert "Failed to download CA certificate" in str(exc_info.value)
     assert mock_server in str(exc_info.value)
@@ -876,14 +876,14 @@ def test_verify_ssl_false_skips_ca_cert(mock_server, monkeypatch):
     monkeypatch.undo()
 
     # Create client with verify_ssl=False
-    client = IPAClient(mock_server, verify_ssl=False)
+    client = IPAThinClient(mock_server, verify_ssl=False)
 
     # Should not attempt to get CA cert
     assert client._verify_ssl is False
 
 
 @responses.activate
-@patch("ipaclient.HTTPSPNEGOAuth")
+@patch("freeipa_mcp.ipaclient.HTTPSPNEGOAuth")
 def test_ssl_verification_with_ca_cert(mock_auth, mock_server, tmp_path, monkeypatch):
     """Test that SSL verification uses the CA certificate."""
     # Override the autouse fixture for this test
@@ -907,7 +907,7 @@ def test_ssl_verification_with_ca_cert(mock_auth, mock_server, tmp_path, monkeyp
     )
 
     # Create client and make request
-    client = IPAClient(mock_server, verify_ssl=True)
+    client = IPAThinClient(mock_server, verify_ssl=True)
     result = client._make_request("ping")
 
     assert result == {"summary": "OK"}

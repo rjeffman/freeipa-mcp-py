@@ -13,7 +13,7 @@ Skip if no server available: pytest -m "not integration"
 
 import pytest
 
-from ipaclient import IPAClient, IPAConnectionError
+from freeipa_mcp.ipaclient import IPAThinClient, IPAConnectionError
 
 # Mark all tests in this file as integration tests
 pytestmark = pytest.mark.integration
@@ -28,7 +28,7 @@ def live_server():
 @pytest.fixture
 def live_client(live_server):
     """Client connected to live server."""
-    return IPAClient(live_server)
+    return IPAThinClient(live_server)
 
 
 def test_integration_ping(live_client):
@@ -105,7 +105,7 @@ def test_integration_no_credentials():
     """Test that missing Kerberos credentials fails gracefully."""
     # This test assumes no valid ticket exists
     # In practice, you'd clear credentials first or use a different server
-    client = IPAClient("nonexistent.example.com")
+    client = IPAThinClient("nonexistent.example.com")
 
     with pytest.raises(IPAConnectionError):
         client.ping()

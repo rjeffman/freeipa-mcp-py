@@ -45,16 +45,41 @@ Development dependencies:
 
 ## Installation
 
+### Basic Installation
+
 ```bash
 git clone https://github.com/rjeffman/freeipa-mcp-py.git
 cd freeipa-mcp-py
 pip install -e .
 ```
 
+### Optional Dependencies
+
+#### Development Tools
+
 For development (includes testing and linting tools):
 
 ```bash
 pip install -e ".[dev]"
+```
+
+#### GUI Support
+
+For optional GUI components:
+
+```bash
+pip install -e ".[gui]"
+```
+
+This installs PyGObject (GTK bindings) for graphical interface components.
+
+**System Requirements for GUI:**
+```bash
+# Fedora/RHEL/CentOS
+dnf install gtk3 gobject-introspection python3-gobject
+
+# Debian/Ubuntu
+apt install libgtk-3-0 gir1.2-gtk-3.0 python3-gi
 ```
 
 ## Quick Start
@@ -68,10 +93,10 @@ kinit admin@EXAMPLE.COM
 ### Basic Usage
 
 ```python
-from ipaclient import IPAClient
+from freeipa_mcp.ipaclient import IPAThinClient
 
 # Connect to your IPA server
-client = IPAClient("ipa.example.com")
+client = IPAThinClient("ipa.example.com")
 
 # Test connectivity
 result = client.ping()
@@ -128,9 +153,9 @@ print(f"Options: {cmd['options']}")
 For AI agents and tools that prefer structured markdown:
 
 ```python
-from ipaclient import IPAClient
+from freeipa_mcp.ipaclient import IPAThinClient
 
-client = IPAClient("ipa.example.com")
+client = IPAThinClient("ipa.example.com")
 
 # Get all topics as markdown table
 topics_md = client.help_markdown()
@@ -193,7 +218,7 @@ for name, cmd in schema["commands"].items():
 
 ## API Reference
 
-### `IPAClient(server, verify_ssl=True)`
+### `IPAThinClient(server, verify_ssl=True)`
 
 Create a new IPA client instance.
 
@@ -244,7 +269,7 @@ By default, the client automatically handles SSL certificate verification:
 This eliminates `InsecureRequestWarning` warnings while maintaining security. To disable SSL verification (not recommended for production):
 
 ```python
-client = IPAClient("ipa.example.com", verify_ssl=False)
+client = IPAThinClient("ipa.example.com", verify_ssl=False)
 ```
 
 ## Error Handling
@@ -252,8 +277,8 @@ client = IPAClient("ipa.example.com", verify_ssl=False)
 All exceptions inherit from `IPAError` and include a `to_dict()` method for MCP-friendly serialization.
 
 ```python
-from ipaclient import (
-    IPAClient,
+from freeipa_mcp.ipaclient import (
+    IPAThinClient,
     IPAError,
     IPAConnectionError,
     IPAAuthenticationError,
@@ -262,7 +287,7 @@ from ipaclient import (
     IPAValidationError,
 )
 
-client = IPAClient("ipa.example.com")
+client = IPAThinClient("ipa.example.com")
 
 try:
     result = client.command("user_show", "nonexistent")
@@ -290,41 +315,74 @@ except IPAError as e:
 | `IPASchemaError` | Schema fetch or parse failure |
 | `IPAValidationError` | Invalid parameters or arguments |
 
-## MCP Server Integration
+## MCP Server
 
-This client is designed to serve as the backend for an MCP server. Example integration pattern:
+This project includes a complete MCP (Model Context Protocol) server that exposes FreeIPA functionality to AI assistants like Claude.
 
-```python
-from ipaclient import IPAClient, IPAError
+### Configuration
 
-client = IPAClient("ipa.example.com")
+Add to your MCP client configuration (e.g., Claude Desktop `~/.config/Claude/claude_desktop_config.json` or VS Code settings):
 
-# Use export_schema() to register MCP tools dynamically
-schema = client.export_schema()
-
-for cmd_name, cmd_info in schema["commands"].items():
-    # Register each IPA command as an MCP tool
-    tool_schema = {
-        "name": cmd_name,
-        "description": cmd_info["summary"],
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                arg["name"]: {"type": arg["type"], "description": arg.get("doc", "")}
-                for arg in cmd_info["args"] + cmd_info["options"]
-            },
-            "required": [arg["name"] for arg in cmd_info["args"]],
-        },
+```json
+{
+  "mcpServers": {
+    "freeipa-mcp": {
+      "type": "stdio",
+      "command": "freeipa-mcp",
+      "args": [],
+      "env": {}
     }
-
-# Execute commands via MCP tool calls
-def handle_tool_call(tool_name, arguments):
-    try:
-        result = client.command(tool_name, **arguments)
-        return {"content": result}
-    except IPAError as e:
-        return e.to_dict()
+  }
+}
 ```
+
+Or copy the included `.mcp.json` to your project.
+
+### Available Tools
+
+The MCP server provides the following tools:
+
+#### `create_ipaconf`
+Configure the FreeIPA server connection. Validates the server FQDN, downloads and caches the CA certificate, verifies connectivity, and automatically loads all available IPA commands as MCP tools.
+
+**Parameters:**
+- `server_hostname` (required): FQDN of the FreeIPA server (e.g., `ipa.demo1.freeipa.org`)
+- `realm` (optional): Kerberos realm (defaults to uppercase server domain)
+
+**Note:**
+- After running `create_ipaconf`, all FreeIPA commands are automatically loaded as MCP tools (e.g., `user-add`, `user-show`, `group-find`, etc.). Each command includes full schema with arguments and options.
+
+#### `login`
+Authenticate to FreeIPA using Kerberos credentials. Supports both password-based and keytab authentication.
+
+**Parameters:**
+- `username` (required): Kerberos principal username
+- `password` (optional): User password (if not using keytab)
+- `keytab_path` (optional): Path to keytab file
+- `realm` (optional): Kerberos realm (auto-detected if not provided)
+
+#### `ping`
+Test FreeIPA server connectivity and retrieve version information.
+
+#### `help`
+Get comprehensive FreeIPA documentation in markdown format.
+
+**Parameters:**
+- `subject` (required): Help topic - use `"topics"` to list all topics, `"commands"` to list all commands, or specify a topic/command name (e.g., `"user"`, `"user-add"`)
+- `force_refresh` (optional): Force regeneration of cached documentation
+
+#### `healthcheck`
+Run FreeIPA server health checks and return results in markdown format.
+
+**Parameters:**
+- `check` (optional): Specific check to run (e.g., `"IPADNSSystemRecordsCheck"`)
+- `source` (optional): Source filter for checks
+- `output_type` (optional): Output format - `"json"` or `"human"` (default)
+- `failures_only` (optional): Show only failed checks (default: `false`)
+
+**Notes:**
+- If running without GUI, passwordless sudo must be configured for healthcheck
+- SSH access to the IPA server is required for healthcheck
 
 ## Testing
 

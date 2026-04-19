@@ -157,4 +157,4 @@ def mock_get_ca_cert(mock_ca_cert, monkeypatch):
     def _mock_get_ca_cert(self):
         return mock_ca_cert
 
-    monkeypatch.setattr("ipaclient.IPAClient._get_ca_cert", _mock_get_ca_cert)
+    monkeypatch.setattr("freeipa_mcp.ipaclient.IPAThinClient._get_ca_cert", _mock_get_ca_cert)

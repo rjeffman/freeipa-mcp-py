@@ -13,7 +13,7 @@ Skip if no server available: pytest -m "not integration"
 
 import pytest
 
-from ipaclient import IPAClient, IPAError
+from freeipa_mcp.ipaclient import IPAThinClient, IPAError
 
 # Mark all tests in this file as integration tests
 pytestmark = pytest.mark.integration
@@ -28,7 +28,7 @@ def live_server():
 @pytest.fixture
 def live_client(live_server):
     """Client connected to live server (no SSL verification for demo)."""
-    return IPAClient(live_server, verify_ssl=False)
+    return IPAThinClient(live_server, verify_ssl=False)
 
 
 def test_topics_markdown(live_client):

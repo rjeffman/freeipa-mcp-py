@@ -9,8 +9,8 @@ via kinit) and returns pure Python dictionaries suitable for MCP integration.
 
 Basic Usage::
 
-    >>> from ipaclient import IPAClient
-    >>> client = IPAClient("ipa.example.com")
+    >>> from freeipa_mcp.ipaclient import IPAThinClient
+    >>> client = IPAThinClient("ipa.example.com")
     >>> result = client.ping()
     >>> print(result["summary"])
     IPA server version 4.9.8. API version 2.251
@@ -188,7 +188,7 @@ class IPAValidationError(IPAError):
 # ============================================================================
 
 
-class IPAClient:
+class IPAThinClient:
     """Minimal IPA JSON-RPC client.
 
     Provides programmatic access to FreeIPA servers via JSON-RPC protocol.

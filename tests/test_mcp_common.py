@@ -40,15 +40,15 @@ def test_get_client_raises_when_no_config():
 
 def test_get_client_returns_ipaclient():
     from freeipa_mcp.tools.common import get_client
-    from ipaclient import IPAClient
+    from freeipa_mcp.ipaclient import IPAThinClient
     with (
         patch(
             "freeipa_mcp.tools.common.load_server_config",
             return_value="ipa.example.com",
         ),
-        patch("freeipa_mcp.tools.common.IPAClient") as mock_cls,
+        patch("freeipa_mcp.tools.common.IPAThinClient") as mock_cls,
     ):
-        mock_cls.return_value = MagicMock(spec=IPAClient)
+        mock_cls.return_value = MagicMock(spec=IPAThinClient)
         client = get_client()
         mock_cls.assert_called_once_with("ipa.example.com")
         assert client is mock_cls.return_value

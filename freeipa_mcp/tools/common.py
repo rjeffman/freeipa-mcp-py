@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-from ipaclient import IPAClient
+from freeipa_mcp.ipaclient import IPAThinClient
 
 
 def get_cache_dir() -> Path:
@@ -28,13 +28,13 @@ def load_server_config() -> str | None:
     return None
 
 
-def get_client() -> IPAClient:
+def get_client() -> IPAThinClient:
     hostname = load_server_config()
     if not hostname:
         raise RuntimeError(
             "No FreeIPA server configured. Use the create_ipaconf tool first."
         )
-    return IPAClient(hostname)
+    return IPAThinClient(hostname)
 
 
 def to_cli_name(api_name: str) -> str:
