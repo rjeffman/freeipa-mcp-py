@@ -32,7 +32,7 @@ async def test_load_dynamic_tools():
     from freeipa_mcp.tools.dynamic import build_all_tools
 
     save_server_config(TEST_SERVER)
-    tools, schemas = build_all_tools()
+    tools, _ = build_all_tools()
     assert len(tools) > 50
     tool_names = [t.name for t in tools]
     assert "user-find" in tool_names
@@ -52,6 +52,7 @@ async def test_dynamic_find_tool_is_read_only():
     assert find_tools, "No *-find tools found"
     assert show_tools, "No *-show tools found"
     for t in find_tools + show_tools:
+        assert t.annotations is not None, f"{t.name} has no annotations"
         assert t.annotations.readOnlyHint is True, f"{t.name} should be read-only"
         assert t.annotations.destructiveHint is False, (
             f"{t.name} should not be destructive"

@@ -74,16 +74,19 @@ async def test_dispatch_dynamic_tool():
 async def test_ping_tool_has_read_only_hint():
     from freeipa_mcp.server import PING_TOOL
 
+    assert PING_TOOL.annotations is not None
     assert PING_TOOL.annotations.readOnlyHint is True
 
 
 async def test_help_tool_has_read_only_hint():
     from freeipa_mcp.server import HELP_TOOL
 
+    assert HELP_TOOL.annotations is not None
     assert HELP_TOOL.annotations.readOnlyHint is True
 
 
 async def test_healthcheck_tool_has_read_only_hint():
     from freeipa_mcp.server import HEALTHCHECK_TOOL
 
+    assert HEALTHCHECK_TOOL.annotations is not None
     assert HEALTHCHECK_TOOL.annotations.readOnlyHint is True

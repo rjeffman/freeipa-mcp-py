@@ -131,6 +131,7 @@ def test_build_tool_show_is_read_only():
 
     tool = build_tool(MOCK_CMD_SHOW)
     assert tool.name == "user-show"
+    assert tool.annotations is not None
     assert tool.annotations.readOnlyHint is True
     assert tool.annotations.destructiveHint is False
 
@@ -140,6 +141,7 @@ def test_build_tool_add_is_destructive():
 
     tool = build_tool(MOCK_CMD_ADD)
     assert tool.name == "user-add"
+    assert tool.annotations is not None
     assert tool.annotations.readOnlyHint is False
     assert tool.annotations.destructiveHint is True
 
@@ -188,7 +190,7 @@ def test_build_all_tools_skips_ping():
     with patch("freeipa_mcp.tools.dynamic.get_client", return_value=mock_client):
         from freeipa_mcp.tools.dynamic import build_all_tools
 
-        tools, schemas = build_all_tools()
+        tools, _ = build_all_tools()
     tool_names = [t.name for t in tools]
     assert "ping" not in tool_names
     assert "user-show" in tool_names
