@@ -3,7 +3,7 @@ requires = ["setuptools>=45", "setuptools-scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "freeipa-mcp"
+name = "freeipa-mcp-py"
 version = "0.1.0"
 description = "Minimal IPA Client for MCP integration"
 readme = "README.md"
@@ -13,6 +13,11 @@ dependencies = [
     "requests-gssapi>=1.2.0",
     "mcp>=1.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/rjeffman/freeipa-mcp-py"
+Issues = "https://github.com/rjeffman/freeipa-mcp-py/issues"
+Repository = "https://github.com/rjeffman/freeipa-mcp-py"
 
 [project.scripts]
 freeipa-mcp = "freeipa_mcp.__main__:main"

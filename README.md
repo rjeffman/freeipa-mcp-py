@@ -45,7 +45,13 @@ Development dependencies:
 
 ## Installation
 
-### Basic Installation
+### From PyPI (Recommended)
+
+```bash
+pip install freeipa-mcp-py
+```
+
+### From Source
 
 ```bash
 git clone https://github.com/rjeffman/freeipa-mcp-py.git
@@ -60,14 +66,22 @@ pip install -e .
 For development (includes testing and linting tools):
 
 ```bash
+# From PyPI
+pip install freeipa-mcp-py[dev]
+
+# From source
 pip install -e ".[dev]"
 ```
 
 #### GUI Support
 
-For optional GUI components:
+For optional GUI components (required for interactive login):
 
 ```bash
+# From PyPI
+pip install freeipa-mcp-py[gui]
+
+# From source
 pip install -e ".[gui]"
 ```
 
