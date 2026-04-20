@@ -72,6 +72,33 @@ include = ["freeipa_mcp/**"]
 # Ignore unresolved imports for external packages without type stubs
 unresolved-import = "ignore"
 
+[tool.pylint.main]
+disable = [
+    "missing-module-docstring",
+    "missing-function-docstring",
+    "import-outside-toplevel",
+    "protected-access",
+    "unused-argument",
+    "redefined-outer-name",
+    "import-error",
+    "duplicate-code",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-return-statements",
+    "too-many-lines",
+    "subprocess-run-check",
+    "broad-exception-caught",
+    "raise-missing-from",
+    "try-except-raise",
+    "global-statement",
+    "unnecessary-pass",
+    "missing-timeout",
+    "unspecified-encoding",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 markers = [
