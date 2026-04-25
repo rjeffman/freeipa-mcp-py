@@ -40,6 +40,9 @@ test = [
 gui = [
     "PyGObject>=3.42.0",
 ]
+vault = [
+    "cryptography>=41.0.0",
+]
 
 [tool.setuptools]
 py-modules = ["ipaclient"]
@@ -90,6 +93,7 @@ ignore = [
     "BLE001",  # blind-except (broad-exception-caught)
     "C901",    # function-is-too-complex (mccabe complexity)
     "D100",    # missing-module-docstring
+    "D102",    # missing-docstring-in-public-method
     "D103",    # missing-function-docstring
     "D104",    # missing-docstring-in-public-package
     "D107",    # missing-docstring-in-__init__
