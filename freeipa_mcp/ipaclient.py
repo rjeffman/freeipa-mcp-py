@@ -223,11 +223,46 @@ class IPAThinClient:
         if verify_ssl:
             self._verify_ssl = self._get_ca_cert()
 
+    @property
+    def server(self) -> str:
+        """Get the IPA server hostname.
+
+        Returns:
+            Server hostname (e.g., 'ipa.example.com')
+        """
+        return self._server
+
+    def get_cache_dir(self, storage: Optional[str] = None) -> Path:
+        """Get server-specific cache directory.
+
+        Returns cache path in the format:
+        ~/.cache/freeipa-mcp-py/{server_fqdn}/{storage}
+
+        Args:
+            storage: Optional subdirectory name (e.g., 'kra-config', 'docs').
+                    If None, returns the server's base cache directory.
+
+        Returns:
+            Path to cache directory for this server (and optional storage)
+
+        Examples:
+            >>> client = IPAThinClient("ipa.demo1.freeipa.org")
+            >>> client.get_cache_dir()
+            Path('/home/user/.cache/freeipa-mcp-py/ipa.demo1.freeipa.org')
+            >>> client.get_cache_dir('kra-config')
+            Path('/home/user/.cache/freeipa-mcp-py/ipa.demo1.freeipa.org/kra-config')
+        """
+        base = Path.home() / ".cache" / "freeipa-mcp-py" / self._server
+        if storage:
+            return base / storage
+        return base
+
     def _get_ca_cert(self) -> str:
         """Get the IPA server CA certificate path.
 
         Downloads and caches the CA certificate from the IPA server if not
-        already cached. The certificate is stored in ~/.cache/freeipa-mcp-py/certs/
+        already cached. The certificate is stored in
+        ~/.cache/freeipa-mcp-py/{server}/ca.crt
 
         Returns:
             Path to the cached CA certificate file
@@ -235,12 +270,12 @@ class IPAThinClient:
         Raises:
             IPAConnectionError: Failed to download CA certificate
         """
-        # Create cache directory
-        cache_dir = Path.home() / ".cache" / "freeipa-mcp-py" / "certs"
+        # Get server-specific cache directory
+        cache_dir = self.get_cache_dir()
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Certificate cache path
-        cert_path = cache_dir / f"{self._server}.crt"
+        cert_path = cache_dir / "ca.crt"
 
         # Return cached certificate if it exists
         if cert_path.exists():
