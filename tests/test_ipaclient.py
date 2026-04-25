@@ -785,7 +785,7 @@ def test_get_ca_cert_downloads_and_caches(mock_server, tmp_path, monkeypatch):
     monkeypatch.undo()
 
     # Mock home directory to use tmp_path
-    cache_dir = tmp_path / ".cache" / "freeipa-mcp-py" / "certs"
+    cache_dir = tmp_path / ".cache" / "freeipa-mcp-py" / mock_server
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     # Mock CA certificate content
@@ -810,7 +810,7 @@ RVBBU2VMSU5FMR4wHAYDVQQDDBVDZXJ0aWZpY2F0ZSBBdXRob3JpdHkwHhcNMjQw
     assert responses.calls[0].request.url == f"http://{mock_server}/ipa/config/ca.crt"
 
     # Verify cert was cached
-    cert_path = cache_dir / f"{mock_server}.crt"
+    cert_path = cache_dir / "ca.crt"
     assert cert_path.exists()
     assert ca_cert_content in cert_path.read_text()
 
@@ -825,7 +825,7 @@ def test_get_ca_cert_uses_cached(mock_server, tmp_path, monkeypatch):
     monkeypatch.undo()
 
     # Mock home directory to use tmp_path
-    cache_dir = tmp_path / ".cache" / "freeipa-mcp-py" / "certs"
+    cache_dir = tmp_path / ".cache" / "freeipa-mcp-py" / mock_server
     cache_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
@@ -833,7 +833,7 @@ def test_get_ca_cert_uses_cached(mock_server, tmp_path, monkeypatch):
     ca_cert_content = (
         "-----BEGIN CERTIFICATE-----\nCACHED CERT\n-----END CERTIFICATE-----"
     )
-    cert_path = cache_dir / f"{mock_server}.crt"
+    cert_path = cache_dir / "ca.crt"
     cert_path.write_text(ca_cert_content)
 
     # Create client (should NOT download cert)
@@ -890,12 +890,12 @@ def test_ssl_verification_with_ca_cert(mock_auth, mock_server, tmp_path, monkeyp
     monkeypatch.undo()
 
     # Mock home directory to use tmp_path
-    cache_dir = tmp_path / ".cache" / "freeipa-mcp-py" / "certs"
+    cache_dir = tmp_path / ".cache" / "freeipa-mcp-py" / mock_server
     cache_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     # Pre-populate cache
-    cert_path = cache_dir / f"{mock_server}.crt"
+    cert_path = cache_dir / "ca.crt"
     cert_path.write_text("-----BEGIN CERTIFICATE-----\nCERT\n-----END CERTIFICATE-----")
 
     # Mock JSON-RPC response
