@@ -75,7 +75,7 @@ pip install -e ".[dev]"
 
 #### GUI Support
 
-For optional GUI components (required for interactive login):
+For optional GUI components (required for interactive login and vault operations):
 
 ```bash
 # From PyPI
@@ -85,15 +85,15 @@ pip install freeipa-mcp-py[gui]
 pip install -e ".[gui]"
 ```
 
-This installs PyGObject (GTK bindings) for graphical interface components.
+This installs PyGObject (GTK4 bindings) for graphical interface components.
 
 **System Requirements for GUI:**
 ```bash
 # Fedora/RHEL/CentOS
-dnf install gtk3 gobject-introspection python3-gobject
+dnf install gtk4 gobject-introspection python3-gobject
 
 # Debian/Ubuntu
-apt install libgtk-3-0 gir1.2-gtk-3.0 python3-gi
+apt install libgtk-4-1 gir1.2-gtk-4.0 python3-gi
 ```
 
 ## Quick Start
@@ -376,7 +376,7 @@ Authenticate to FreeIPA using Kerberos credentials. Opens a secure GTK4 dialog t
 - `ipa_confdir` (optional): IPA config directory path
 
 **Security:**
-- Password is never passed as a parameter - it's always entered through a secure GUI dialog
+- Password is never passed as a parameter - it's always entered through a secure GTK4 dialog
 - Requires a graphical display (DISPLAY or WAYLAND_DISPLAY environment variable)
 - Requires GTK4 and PyGObject (`pip install -e ".[gui]"` or install system packages)
 
@@ -402,6 +402,35 @@ Run FreeIPA server health checks and return results in markdown format.
 **Notes:**
 - If running without GUI, passwordless sudo must be configured for healthcheck
 - SSH access to the IPA server is required for healthcheck
+
+#### Vault Tools
+
+Vault operations provide secure client-side encryption for sensitive data storage. All vault commands ensure passwords and vault data are never exposed to AI agents.
+
+**Available vault commands:**
+- `vault-add`: Create a new vault (standard, symmetric, or asymmetric)
+- `vault-mod`: Modify vault metadata
+- `vault-archive`: Store encrypted data in a vault
+- `vault-retrieve`: Retrieve and decrypt vault data
+- `vaultconfig-show`: Display KRA configuration
+
+**Security Features:**
+- **Password Security**: For symmetric vaults, passwords must be provided via `password_file` parameter or are prompted through a secure GTK4 dialog. Passwords are never passed as command parameters.
+- **Data Security**: Retrieved vault data is saved to a file (via `out` parameter) or displayed in a GTK4 dialog with copy/save buttons. Sensitive data is never returned to AI agents.
+- **Client-Side Encryption**: All encryption/decryption happens locally using PBKDF2, Fernet, and RSA-OAEP as appropriate for the vault type.
+- **Display Required**: GUI operations require a graphical display and GTK4 (`pip install -e ".[gui]"`)
+
+**Example:**
+```python
+# Archive data (password via GUI or file)
+vault-archive --cn=my-secret --in=/path/to/data.txt --password_file=/path/to/password
+
+# Retrieve data (displays in GUI window)
+vault-retrieve --cn=my-secret
+
+# Retrieve to file
+vault-retrieve --cn=my-secret --out=/path/to/decrypted.txt --password_file=/path/to/password
+```
 
 ## Testing
 
