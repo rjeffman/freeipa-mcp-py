@@ -143,6 +143,7 @@ def test_make_request_basic(mock_auth, mock_server):
     # Verify request payload
     body = responses.calls[0].request.body
     assert body is not None
+    assert isinstance(body, (str, bytes, bytearray))
     request_body = json.loads(body)
     assert request_body["method"] == "ping"
     assert request_body["params"] == [[], {"version": "2.251"}]
@@ -165,6 +166,7 @@ def test_make_request_with_args(mock_auth, mock_server):
 
     body = responses.calls[0].request.body
     assert body is not None
+    assert isinstance(body, (str, bytes, bytearray))
     request_body = json.loads(body)
     assert request_body["params"][0] == ["admin"]
 
@@ -185,6 +187,7 @@ def test_make_request_with_options(mock_auth, mock_server):
 
     body = responses.calls[0].request.body
     assert body is not None
+    assert isinstance(body, (str, bytes, bytearray))
     request_body = json.loads(body)
     assert request_body["params"][1]["all"] is True
     assert request_body["params"][1]["raw"] is False
@@ -207,6 +210,7 @@ def test_make_request_version_override(mock_auth, mock_server):
 
     body = responses.calls[0].request.body
     assert body is not None
+    assert isinstance(body, (str, bytes, bytearray))
     request_body = json.loads(body)
     assert request_body["params"][1]["version"] == "2.250"
 
@@ -385,6 +389,7 @@ def test_command_with_args(mock_auth, mock_server):
 
     body = responses.calls[0].request.body
     assert body is not None
+    assert isinstance(body, (str, bytes, bytearray))
     request_body = json.loads(body)
     assert request_body["method"] == "user_show"
     assert request_body["params"][0] == ["admin"]
@@ -410,6 +415,7 @@ def test_command_with_kwargs(mock_auth, mock_server):
 
     body = responses.calls[0].request.body
     assert body is not None
+    assert isinstance(body, (str, bytes, bytearray))
     request_body = json.loads(body)
     assert request_body["params"][1]["uid"] == "test"
     assert request_body["params"][1]["sizelimit"] == 10
@@ -432,6 +438,7 @@ def test_command_with_args_and_kwargs(mock_auth, mock_server):
 
     body = responses.calls[0].request.body
     assert body is not None
+    assert isinstance(body, (str, bytes, bytearray))
     request_body = json.loads(body)
     assert request_body["params"][0] == ["testgroup"]
     assert request_body["params"][1]["all"] is True
