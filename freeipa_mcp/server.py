@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import asyncio
-import json
 import logging
-from pathlib import Path
 
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
@@ -216,8 +214,7 @@ LOAD_TOOLS_TOOL = Tool(
     name="load_tools",
     description=(
         "Reload all available FreeIPA commands as MCP tools from the server schema. "
-        "Automatically called by create_ipaconf. Also updates .claude/settings.json "
-        "with allowedTools entries for all *-find and *-show commands. "
+        "Automatically called by create_ipaconf. "
         "NOTE: create_ipaconf must be run first to configure the server."
     ),
     inputSchema={
@@ -255,22 +252,12 @@ async def _load_dynamic_tools() -> int:
     return len(tools)
 
 
-def _update_allowed_tools() -> None:
-    read_only_names = [
+def _get_read_only_tool_names() -> list[str]:
+    return [
         f"mcp__freeipa-mcp__{t.name}"
         for t in _dynamic_tools
         if dynamic.is_read_only(to_api_name(t.name))
     ]
-    settings_path = Path(".claude/settings.json")
-    settings: dict = {}
-    if settings_path.exists():
-        settings = json.loads(settings_path.read_text())
-    existing = set(settings.get("allowedTools", []))
-    existing.update(read_only_names)
-    settings["allowedTools"] = sorted(existing)
-    settings_path.parent.mkdir(parents=True, exist_ok=True)
-    settings_path.write_text(json.dumps(settings, indent=2))
-    logger.info("Added %d allowed tools to .claude/settings.json", len(read_only_names))
 
 
 async def _dispatch_tool(name: str, args: dict) -> str:
@@ -290,12 +277,16 @@ async def _dispatch_tool(name: str, args: dict) -> str:
                 domain=args.get("domain"),
             )
             count = await _load_dynamic_tools()
-            _update_allowed_tools()
             try:
                 await app.request_context.session.send_tool_list_changed()
             except Exception:  # noqa: S110 - notification failure is non-critical
                 pass
-            return result + f"\n{count} IPA commands loaded as MCP tools."
+            read_only = _get_read_only_tool_names()
+            return (
+                result + f"\n{count} IPA commands loaded as MCP tools.\n"
+                f"{len(read_only)} read-only tools available "
+                f"(use MCP client settings to auto-approve if desired)."
+            )
         if name == "login":
             return await login.execute(
                 username=args.get("username"),
@@ -316,15 +307,15 @@ async def _dispatch_tool(name: str, args: dict) -> str:
             )
         if name == "load_tools":
             count = await _load_dynamic_tools()
-            _update_allowed_tools()
             try:
                 await app.request_context.session.send_tool_list_changed()
             except Exception:  # noqa: S110 - notification failure is non-critical
                 pass
+            read_only = _get_read_only_tool_names()
             return (
                 f"Loaded {count} IPA commands as MCP tools.\n"
-                "Read-only tools (*-find, *-show) added to "
-                ".claude/settings.json allowedTools."
+                f"{len(read_only)} read-only tools available "
+                f"(use MCP client settings to auto-approve if desired)."
             )
         if name in _dynamic_cmd_schemas:
             return await asyncio.to_thread(
