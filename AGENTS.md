@@ -7,6 +7,12 @@ Most agents are more efficient when dealing with Markdown text than with JSON ob
 - If the output is big (2KB or more), prefer markdown format
 - If the output is small and structured, use JSON
 
+## Running tests locally
+
+**ALWAYS** follow this rules when running local tests:
+
+- If a tool is not available and needs to be installed, **ALWAYS** use a Python virtual environment in a directory under `/tmp`
+
 ## Contributing code to the repostory
 
 It is **CRITICAL** that **ALL** rules defined in [docs/contributing.md](docs/contributing.md) are followed. There's even an available skill (`ensure-contributing-rules`) to check it.
