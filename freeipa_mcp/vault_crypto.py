@@ -23,6 +23,15 @@ from cryptography.hazmat.primitives.asymmetric.rsa import (
     RSAPublicKey,
 )
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+try:
+    from cryptography.hazmat.decrepit.ciphers.algorithms import (
+        TripleDES,
+    )
+except ImportError:
+    from cryptography.hazmat.primitives.ciphers.algorithms import (
+        TripleDES,
+    )
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509 import load_der_x509_certificate
 
@@ -321,7 +330,7 @@ def wrap_vault_data(algo: str, session_key: bytes, data: bytes) -> tuple[bytes, 
         cipher_algo = algorithms.AES(session_key)
         nonce_len = 16
     elif algo == "des-ede3-cbc":
-        cipher_algo = algorithms.TripleDES(session_key)
+        cipher_algo = TripleDES(session_key)
         nonce_len = 8
     else:
         raise VaultCryptoError(f"Unknown vault wrapping algorithm: {algo}")
@@ -365,7 +374,7 @@ def unwrap_vault_data(
     if algo == "aes-128-cbc":
         cipher_algo = algorithms.AES(session_key)
     elif algo == "des-ede3-cbc":
-        cipher_algo = algorithms.TripleDES(session_key)
+        cipher_algo = TripleDES(session_key)
     else:
         raise VaultCryptoError(f"Unknown vault wrapping algorithm: {algo}")
 
