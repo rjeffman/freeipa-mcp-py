@@ -200,11 +200,14 @@ def wrap_session_key_with_fallback(
     """
     RSA-wrap session key with KRA transport cert, with fallback logic.
 
+    Attempts OAEP first (modern, IND-CCA2 secure), falls back to PKCS1v15
+    for compatibility with older KRA deployments.
+
     Attempts:
-    1. PKCS1v15 with cached cert
-    2. OAEP with cached cert (if PKCS1v15 rejected by FIPS)
-    3. PKCS1v15 with fresh cert
-    4. OAEP with fresh cert
+    1. OAEP with cached cert
+    2. PKCS1v15 with cached cert (legacy fallback)
+    3. OAEP with fresh cert
+    4. PKCS1v15 with fresh cert (legacy fallback)
 
     Args:
         client: IPA client instance
@@ -217,12 +220,12 @@ def wrap_session_key_with_fallback(
     Raises:
         VaultCryptoError: If all attempts fail
     """
-    # Attempt 1 & 2: Try cached cert with PKCS1v15, fallback to OAEP
+    # Attempt 1 & 2: Try cached cert with OAEP, fallback to PKCS1v15
     try:
-        return cert_rsa_encrypt_pkcs1v15(session_key, cached_cert)
+        return cert_rsa_encrypt_oaep(session_key, cached_cert)
     except VaultCryptoError:
         try:
-            return cert_rsa_encrypt_oaep(session_key, cached_cert)
+            return cert_rsa_encrypt_pkcs1v15(session_key, cached_cert)
         except VaultCryptoError:
             pass
 
@@ -230,9 +233,9 @@ def wrap_session_key_with_fallback(
     try:
         fresh_cert, _ = get_vaultconfig(client, force_refresh=True)
         try:
-            return cert_rsa_encrypt_pkcs1v15(session_key, fresh_cert)
-        except VaultCryptoError:
             return cert_rsa_encrypt_oaep(session_key, fresh_cert)
+        except VaultCryptoError:
+            return cert_rsa_encrypt_pkcs1v15(session_key, fresh_cert)
     except Exception as e:
         raise VaultCryptoError(f"Failed to wrap session key: {e}") from e
 
