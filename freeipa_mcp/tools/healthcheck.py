@@ -3,6 +3,7 @@ import asyncio
 import json
 import os
 import re
+import shlex
 import subprocess
 import time
 from pathlib import Path
@@ -277,15 +278,13 @@ def _validate_severity(severity: list[str] | None) -> None:
 def _exec_ssh(
     hostname: str, username: str, command: str, password: str | None = None
 ) -> str:
-    escaped_cmd = command.replace("\\", "\\\\").replace('"', '\\"')
+    quoted_cmd = shlex.quote(command)
 
     if password is not None:
-        # SECURITY: Pass password via stdin instead of embedding in shell command
-        # to prevent command injection through special characters in password
-        remote = f'bash -c "cd / && sudo --stdin {escaped_cmd}; echo $?"'
+        remote = f"cd / && sudo --stdin {quoted_cmd}; echo $?"
         ssh_input = f"{password}\n"
     else:
-        remote = f'bash -c "cd / && sudo {escaped_cmd}; echo $?"'
+        remote = f"cd / && sudo {quoted_cmd}; echo $?"
         ssh_input = None
 
     # SECURITY: All callers of _exec_ssh MUST validate inputs before calling.
@@ -300,7 +299,7 @@ def _exec_ssh(
             "-o",
             "GSSAPIDelegateCredentials=yes",
             "-o",
-            "StrictHostKeyChecking=accept-new",
+            "StrictHostKeyChecking=yes",
             "-o",
             "BatchMode=yes",
             "-o",
