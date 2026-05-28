@@ -22,7 +22,10 @@ def test_display_vault_data_passes_data_via_stdin_not_argv():
     vault_name = "test-vault"
     sensitive_data = b"secret password 123"
 
-    with patch("subprocess.run") as mock_run:
+    with (
+        patch("freeipa_mcp.tools._vault_dialog.has_display", return_value=True),
+        patch("subprocess.run") as mock_run,
+    ):
         # Mock successful subprocess execution
         mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
 
