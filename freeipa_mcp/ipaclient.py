@@ -85,12 +85,15 @@ Dependencies:
 """
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import requests
 from requests_gssapi import HTTPSPNEGOAuth
+
+logger = logging.getLogger(__name__)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -314,13 +317,20 @@ class IPAThinClient:
                     )
             return str(cert_path)
 
-        # Download CA certificate from server
+        # Download CA certificate from server (HTTP — no TLS for bootstrap)
         ca_url = f"http://{self._server}/ipa/config/ca.crt"
+        if not self._ca_fingerprint:
+            logger.warning(
+                "Downloading CA certificate over HTTP without fingerprint "
+                "verification (TOFU). An active network attacker could "
+                "substitute a rogue CA. Pass ca_fingerprint to "
+                "IPAThinClient() to pin the expected certificate."
+            )
         try:
             response = requests.get(ca_url, timeout=10)
             response.raise_for_status()
 
-            # Verify fingerprint if required
+            # Verify fingerprint if provided
             if self._ca_fingerprint:
                 actual_fingerprint = hashlib.sha256(response.text.encode()).hexdigest()
                 if actual_fingerprint != self._ca_fingerprint:
