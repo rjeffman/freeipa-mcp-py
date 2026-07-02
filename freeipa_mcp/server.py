@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import asyncio
+import json
 import logging
+import os
+import subprocess
 
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool, ToolAnnotations
 
+from .delegation import ActorContext, DelegationConfig, OBOClient
 from .tools import create_ipaconf, dynamic, healthcheck, login, ping
 from .tools import help as help_tool
 from .tools.common import to_api_name
@@ -17,6 +21,8 @@ app = Server("freeipa-mcp")
 
 _dynamic_tools: list[Tool] = []
 _dynamic_cmd_schemas: dict[str, dict] = {}
+_delegation_config: DelegationConfig | None = None
+_obo_client: OBOClient | None = None
 
 # --- Static tool definitions ---
 
@@ -239,6 +245,69 @@ STATIC_TOOLS = [
 ]
 
 
+def _init_delegation():
+    """Initialize delegation from env vars if enabled."""
+    global _delegation_config, _obo_client
+    config = DelegationConfig.from_env()
+    if config.enabled:
+        _delegation_config = config
+        _obo_client = OBOClient(config)
+        logger.info("Delegation enabled: client_id=%s", config.client_id)
+
+
+def _detect_kerberos_principal() -> str | None:
+    """Get default principal from klist.
+
+    Returns:
+        Principal name from klist, or None if unavailable
+    """
+    try:
+        result = subprocess.run(
+            ["klist", "-l"],  # noqa: S607 - klist is a standard system command
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            # Parse klist -l output (skip header lines)
+            for line in result.stdout.splitlines()[2:]:
+                parts = line.split()
+                if parts:
+                    return parts[0]
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def _resolve_actor(on_behalf_of: str | None) -> ActorContext | None:
+    """Resolve actor from explicit param > env > klist > None.
+
+    Args:
+        on_behalf_of: Explicit principal from tool parameter
+
+    Returns:
+        ActorContext if delegation enabled, otherwise None
+    """
+    if not _delegation_config or not _delegation_config.enabled:
+        return None
+
+    # Resolve principal: explicit > env > klist
+    principal = (
+        on_behalf_of
+        or os.environ.get("MCP_ON_BEHALF_OF")
+        or _detect_kerberos_principal()
+    )
+
+    if not principal:
+        return ActorContext.anonymous()
+
+    if _obo_client:
+        token = _obo_client.get_delegated_token(principal)
+        return token.actor
+
+    return ActorContext(principal=principal, tool_identity=_delegation_config.client_id)
+
+
 @app.list_tools()
 async def handle_list_tools() -> list[Tool]:
     return STATIC_TOOLS + _dynamic_tools
@@ -260,7 +329,7 @@ def _get_read_only_tool_names() -> list[str]:
     ]
 
 
-async def _dispatch_tool(name: str, args: dict) -> str:
+async def _dispatch_tool(name: str, args: dict, ccache_path: str | None = None) -> str:
     try:
         if name == "ping":
             return await ping.execute(args.get("ipa_confdir"))
@@ -319,7 +388,11 @@ async def _dispatch_tool(name: str, args: dict) -> str:
             )
         if name in _dynamic_cmd_schemas:
             return await asyncio.to_thread(
-                dynamic.execute_command, name, args, _dynamic_cmd_schemas[name]
+                dynamic.execute_command,
+                name,
+                args,
+                _dynamic_cmd_schemas[name],
+                ccache_path=ccache_path,
             )
         return f"Error: Unknown tool '{name}'"
     except Exception as exc:
@@ -329,7 +402,28 @@ async def _dispatch_tool(name: str, args: dict) -> str:
 
 @app.call_tool()
 async def handle_call_tool(name: str, arguments: dict | None) -> list[TextContent]:
-    result = await _dispatch_tool(name, arguments or {})
+    args = dict(arguments or {})
+
+    # Extract on_behalf_of parameter (if present)
+    on_behalf_of = args.pop("on_behalf_of", None)
+
+    # Resolve actor context
+    actor = _resolve_actor(on_behalf_of)
+
+    # For non-read-only commands with delegation, get ccache
+    ccache_path = None
+    if actor and _obo_client and name in _dynamic_cmd_schemas:
+        api_name = to_api_name(name)
+        if not dynamic.is_read_only(api_name):
+            ccache_path = _obo_client.get_delegated_ccache(actor.principal)
+
+    # Dispatch tool
+    result = await _dispatch_tool(name, args, ccache_path=ccache_path)
+
+    # Append actor context to result if present
+    if actor:
+        result += f"\n\n---\nActor: {json.dumps(actor.to_dict())}"
+
     return [TextContent(type="text", text=result)]
 
 
@@ -339,6 +433,10 @@ async def serve() -> None:
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
         handlers=[logging.StreamHandler()],
     )
+
+    # Initialize delegation if enabled
+    _init_delegation()
+
     async with stdio_server() as (read_stream, write_stream):
         await app.run(
             read_stream,

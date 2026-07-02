@@ -33,13 +33,13 @@ def load_server_config() -> str | None:
     return None
 
 
-def get_client() -> IPAThinClient:
+def get_client(ccache_path: str | None = None) -> IPAThinClient:
     hostname = load_server_config()
     if not hostname:
         raise RuntimeError(
             "No FreeIPA server configured. Use the create_ipaconf tool first."
         )
-    return IPAThinClient(hostname)
+    return IPAThinClient(hostname, ccache_path=ccache_path)
 
 
 def to_cli_name(api_name: str) -> str:

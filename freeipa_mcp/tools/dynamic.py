@@ -77,10 +77,22 @@ def build_command_input_schema(cmd: dict) -> dict:
 def build_tool(cmd: dict) -> Tool:
     api_name = cmd["name"]
     read_only = is_read_only(api_name)
+    schema = build_command_input_schema(cmd)
+
+    # Add on_behalf_of parameter for non-read-only tools
+    if not read_only:
+        schema["properties"]["on_behalf_of"] = {
+            "type": "string",
+            "description": (
+                "Principal to act on behalf of (e.g., alice@REALM). "
+                "Enables delegation identity."
+            ),
+        }
+
     return Tool(
         name=to_cli_name(api_name),
         description=cmd.get("doc", cmd.get("summary", "")),
-        inputSchema=build_command_input_schema(cmd),
+        inputSchema=schema,
         annotations=ToolAnnotations(
             readOnlyHint=read_only,
             destructiveHint=not read_only,
@@ -254,8 +266,20 @@ def build_all_tools() -> tuple[list[Tool], dict[str, dict]]:
     return tools, cmd_schemas
 
 
-def execute_command(cli_name: str, arguments: dict, cmd_schema: dict) -> str:
-    """Execute a dynamic IPA command and return pretty-printed JSON."""
+def execute_command(
+    cli_name: str, arguments: dict, cmd_schema: dict, ccache_path: str | None = None
+) -> str:
+    """Execute a dynamic IPA command and return pretty-printed JSON.
+
+    Args:
+        cli_name: CLI command name (e.g., "user-add")
+        arguments: Command arguments
+        cmd_schema: Command schema from IPA
+        ccache_path: Optional Kerberos ccache path for delegation
+
+    Returns:
+        Pretty-printed JSON result
+    """
     # Check for custom executor first
     custom_executor = get_custom_executor(cli_name)
     if custom_executor:
@@ -268,6 +292,6 @@ def execute_command(cli_name: str, arguments: dict, cmd_schema: dict) -> str:
         arguments[a["name"]] for a in cmd_schema["args"] if a["name"] in arguments
     ]
     options = {k: v for k, v in arguments.items() if k not in arg_names}
-    client = get_client()
+    client = get_client(ccache_path=ccache_path)
     result = client.command(api_name, *positional, **options)
     return json.dumps(result, indent=2, default=str)

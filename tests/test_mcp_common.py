@@ -56,7 +56,7 @@ def test_get_client_returns_ipaclient():
     ):
         mock_cls.return_value = MagicMock(spec=IPAThinClient)
         client = get_client()
-        mock_cls.assert_called_once_with("ipa.example.com")
+        mock_cls.assert_called_once_with("ipa.example.com", ccache_path=None)
         assert client is mock_cls.return_value
 
 
