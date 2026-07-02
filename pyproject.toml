@@ -128,6 +128,15 @@ ignore = [
     "TRY400",  # error-instead-of-exception
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S105",  # hardcoded-password-string (test fixtures)
+    "S106",  # hardcoded-password-func-arg (test fixtures)
+    "S108",  # hardcoded-temp-file (test fixtures)
+    "E501",  # line-too-long (long docstrings in tests are OK)
+    "F401",  # unused-import (may be used by fixtures)
+]
+
 [[tool.ty.overrides]]
 include = ["tests/**"]
 

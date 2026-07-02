@@ -210,6 +210,7 @@ class IPAThinClient:
         server: str,
         verify_ssl: bool = True,
         ca_fingerprint: Optional[str] = None,
+        ccache_path: Optional[str] = None,
     ):
         """Initialize IPA client.
 
@@ -223,12 +224,15 @@ class IPAThinClient:
                           will be verified against this fingerprint to prevent
                           Trust-On-First-Use (TOFU) attacks. Recommended for
                           production deployments.
+            ccache_path: Optional path to Kerberos ccache file for delegation.
+                        If provided, KRB5CCNAME will be set before authentication.
         """
         self._server = server
         self._base_url = f"https://{server}"
         self._json_url = f"{self._base_url}/ipa/json"
         self._verify_ssl: Union[bool, str] = verify_ssl
         self._ca_fingerprint = ca_fingerprint
+        self._ccache_path = ccache_path
         self._schema: Optional[Dict[str, Any]] = None
 
         # If SSL verification is enabled, get the CA certificate
@@ -387,6 +391,10 @@ class IPAThinClient:
             "Referer": f"{self._base_url}/ipa",
             "Accept": "application/json",
         }
+
+        # Set KRB5CCNAME if ccache_path provided (for delegation)
+        if self._ccache_path:
+            os.environ["KRB5CCNAME"] = self._ccache_path
 
         # Make request with Kerberos authentication
         try:
